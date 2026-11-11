@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Server Status</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #121212;
+            color: #ffffff;
+        }
+        .container {
+            text-align: center;
+            background: #1e1e1e;
+            padding: 2.5rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            max-width: 400px;
+            width: 90%;
+        }
+        .status-text { margin-top: 1rem; color: #a0a0a0; }
+        /* Simple CSS Spinner */
+        .spinner {
+            margin: 0 auto 1rem;
+            width: 40px;
+            height: 40px;
+            border: 4px solid #333;
+            border-top: 4px solid #4CAF50;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+    <div class="container" id="ui-container">
+        <div class="spinner" id="spinner"></div>
+        <h2 id="title">Checking Server</h2>
+        <p class="status-text" id="subtitle">Connecting to database...</p>
+    </div>
+
+    <script>
+        // Your specific Firebase URL targeting port 8787
+        const dbUrl = "https://cloudflaredurl-default-rtdb.asia-southeast1.firebasedatabase.app/tunnel_8787.json";
+        
+        async function checkStatus() {
+            try {
+                // cache: 'no-store' forces the browser to check Firebase directly every time
+                const response = await fetch(dbUrl, { cache: 'no-store' });
+                const data = await response.json();
+                
+                const title = document.getElementById("title");
+                const subtitle = document.getElementById("subtitle");
+                const spinner = document.getElementById("spinner");
+
+                // Safeguard: If database is completely empty/deleted
+                if (!data) {
+                    title.innerText = "Service Unavailable";
+                    subtitle.innerText = "The server is offline. Please try again later.";
+                    spinner.style.display = "none";
+                    setTimeout(checkStatus, 5000); 
+                    return;
+                }
+
+                if (data.status === "online" && data.url) {
+                    title.innerText = "Server Online";
+                    subtitle.innerText = "Redirecting you now...";
+                    spinner.style.borderTopColor = "#4CAF50"; 
+                    // Safely redirects to the full URL including any appended paths like /view
+                    window.location.replace(data.url); 
+                } 
+                else if (data.status === "waiting") {
+                    title.innerText = "Reconnecting...";
+                    subtitle.innerText = "The server is currently generating a new secure link. Please wait.";
+                    spinner.style.display = "block";
+                    spinner.style.borderTopColor = "#FFC107";
+                    setTimeout(checkStatus, 5000); // Check again in 5 seconds
+                } 
+                else {
+                    title.innerText = "Service Unavailable";
+                    subtitle.innerText = "The server is offline. Please try again later.";
+                    spinner.style.display = "none";
+                    setTimeout(checkStatus, 5000); // Check again in 5 seconds
+                }
+            } catch (error) {
+                console.error("Database fetch failed", error);
+                setTimeout(checkStatus, 5000); // Check again in 5 seconds on error
+            }
+        }
+
+        // Start checking immediately when page loads
+        checkStatus();
+    </script>
+</body>
+</html>
