@@ -3,96 +3,454 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Server Status</title>
+    <title>Server Gateway</title>
     <style>
-        body {
-            font-family: system-ui, -apple-system, sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
+        * {
+            box-sizing: border-box;
             margin: 0;
-            background-color: #121212;
+            padding: 0;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: #07090e;
+            background-image: radial-gradient(circle at 50% 0%, #162032 0%, #07090e 70%);
+            color: #f0f4f8;
+            display: -webkit-box;
+            display: -ms-flexbox;
+            display: flex;
+            -webkit-box-pack: center;
+            -ms-flex-pack: center;
+            justify-content: center;
+            -webkit-box-align: center;
+            -ms-flex-align: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 16px;
+        }
+
+        .card {
+            background-color: #111622;
+            background-color: rgba(17, 22, 34, 0.85);
+            -webkit-backdrop-filter: blur(12px);
+            backdrop-filter: blur(12px);
+            border: 1px solid #00f0ff;
+            border-radius: 16px;
+            padding: 28px 22px;
+            width: 100%;
+            max-width: 380px;
+            text-align: center;
+            box-shadow: 0 0 25px rgba(0, 240, 255, 0.15), inset 0 0 15px rgba(0, 240, 255, 0.05);
+            -webkit-transition: border-color 0.4s ease, box-shadow 0.4s ease;
+            transition: border-color 0.4s ease, box-shadow 0.4s ease;
+        }
+
+        /* State Theme Modifiers */
+        .card.state-checking {
+            border-color: #00f0ff;
+            box-shadow: 0 0 25px rgba(0, 240, 255, 0.2);
+        }
+        .card.state-online {
+            border-color: #00ff88;
+            box-shadow: 0 0 30px rgba(0, 255, 136, 0.3);
+        }
+        .card.state-waiting {
+            border-color: #ffaa00;
+            box-shadow: 0 0 25px rgba(255, 170, 0, 0.25);
+        }
+        .card.state-offline {
+            border-color: #ff3366;
+            box-shadow: 0 0 25px rgba(255, 51, 102, 0.25);
+        }
+
+        /* Status Pill Badge */
+        .badge {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            margin-bottom: 20px;
+            background: rgba(0, 240, 255, 0.12);
+            color: #00f0ff;
+            border: 1px solid rgba(0, 240, 255, 0.3);
+        }
+        .state-online .badge {
+            background: rgba(0, 255, 136, 0.12);
+            color: #00ff88;
+            border-color: rgba(0, 255, 136, 0.3);
+        }
+        .state-waiting .badge {
+            background: rgba(255, 170, 0, 0.12);
+            color: #ffaa00;
+            border-color: rgba(255, 170, 0, 0.3);
+        }
+        .state-offline .badge {
+            background: rgba(255, 51, 102, 0.12);
+            color: #ff3366;
+            border-color: rgba(255, 51, 102, 0.3);
+        }
+
+        .dot {
+            display: inline-block;
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background-color: currentColor;
+            margin-right: 6px;
+            vertical-align: middle;
+            -webkit-animation: pulse 1.2s infinite ease-in-out;
+            animation: pulse 1.2s infinite ease-in-out;
+        }
+
+        /* Dual-Ring Orbital Spinner */
+        .loader-wrap {
+            position: relative;
+            width: 68px;
+            height: 68px;
+            margin: 0 auto 20px;
+        }
+        .ring-outer, .ring-inner {
+            position: absolute;
+            border-radius: 50%;
+        }
+        .ring-outer {
+            top: 0; left: 0; right: 0; bottom: 0;
+            border: 3px solid transparent;
+            border-top-color: #00f0ff;
+            border-bottom-color: #00f0ff;
+            -webkit-animation: spin 1.4s linear infinite;
+            animation: spin 1.4s linear infinite;
+        }
+        .ring-inner {
+            top: 12px; left: 12px; right: 12px; bottom: 12px;
+            border: 3px solid transparent;
+            border-left-color: #00f0ff;
+            border-right-color: #00f0ff;
+            opacity: 0.6;
+            -webkit-animation: spin-reverse 1s linear infinite;
+            animation: spin-reverse 1s linear infinite;
+        }
+        .core-dot {
+            position: absolute;
+            top: 26px; left: 26px;
+            width: 16px; height: 16px;
+            border-radius: 50%;
+            background-color: #00f0ff;
+            box-shadow: 0 0 12px #00f0ff;
+            -webkit-animation: pulse 1.2s infinite ease-in-out;
+            animation: pulse 1.2s infinite ease-in-out;
+        }
+
+        /* Dynamic Spinner Colors */
+        .state-online .ring-outer { border-top-color: #00ff88; border-bottom-color: #00ff88; }
+        .state-online .ring-inner { border-left-color: #00ff88; border-right-color: #00ff88; }
+        .state-online .core-dot { background-color: #00ff88; box-shadow: 0 0 15px #00ff88; }
+
+        .state-waiting .ring-outer { border-top-color: #ffaa00; border-bottom-color: #ffaa00; }
+        .state-waiting .ring-inner { border-left-color: #ffaa00; border-right-color: #ffaa00; }
+        .state-waiting .core-dot { background-color: #ffaa00; box-shadow: 0 0 12px #ffaa00; }
+
+        .state-offline .ring-outer {
+            border-color: rgba(255, 51, 102, 0.3);
+            -webkit-animation: none;
+            animation: none;
+        }
+        .state-offline .ring-inner {
+            border-color: rgba(255, 51, 102, 0.5);
+            -webkit-animation: none;
+            animation: none;
+        }
+        .state-offline .core-dot {
+            background-color: #ff3366;
+            box-shadow: 0 0 12px #ff3366;
+        }
+
+        h2 {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 8px;
             color: #ffffff;
         }
-        .container {
-            text-align: center;
-            background: #1e1e1e;
-            padding: 2.5rem;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
-            max-width: 400px;
-            width: 90%;
+
+        .subtitle {
+            font-size: 14px;
+            line-height: 1.5;
+            color: #94a3b8;
+            margin-bottom: 20px;
+            min-height: 42px;
         }
-        .status-text { margin-top: 1rem; color: #a0a0a0; }
-        /* Simple CSS Spinner */
-        .spinner {
-            margin: 0 auto 1rem;
-            width: 40px;
-            height: 40px;
-            border: 4px solid #333;
-            border-top: 4px solid #4CAF50;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
+
+        /* Progress Bar & Feedback Footer */
+        .progress-track {
+            width: 100%;
+            height: 4px;
+            background-color: #1e293b;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 12px;
         }
+        .progress-bar {
+            width: 100%;
+            height: 100%;
+            background-color: #00f0ff;
+            -webkit-transition: width 0.9s linear, background-color 0.3s ease;
+            transition: width 0.9s linear, background-color 0.3s ease;
+        }
+        .state-online .progress-bar { background-color: #00ff88; }
+        .state-waiting .progress-bar { background-color: #ffaa00; }
+        .state-offline .progress-bar { background-color: #ff3366; }
+
+        .meta-info {
+            font-size: 12px;
+            color: #64748b;
+            margin-bottom: 16px;
+        }
+
+        /* Buttons (D-Pad & Touch Friendly) */
+        .btn {
+            display: inline-block;
+            width: 100%;
+            padding: 10px 16px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #e2e8f0;
+            background-color: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            cursor: pointer;
+            text-decoration: none;
+            margin-top: 6px;
+            -webkit-transition: all 0.2s ease;
+            transition: all 0.2s ease;
+        }
+        .btn:hover, .btn:focus {
+            outline: none;
+            background-color: #0f172a;
+            border-color: #00f0ff;
+            box-shadow: 0 0 10px rgba(0, 240, 255, 0.3);
+            color: #ffffff;
+        }
+        .btn-launch {
+            display: none;
+            background-color: rgba(0, 255, 136, 0.15);
+            border-color: #00ff88;
+            color: #00ff88;
+        }
+        .btn-launch:hover, .btn-launch:focus {
+            background-color: #00ff88;
+            color: #07090e;
+            box-shadow: 0 0 15px rgba(0, 255, 136, 0.5);
+        }
+
+        /* Keyframe Animations */
+        @-webkit-keyframes spin { 0% { -webkit-transform: rotate(0deg); } 100% { -webkit-transform: rotate(360deg); } }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        @-webkit-keyframes spin-reverse { 0% { -webkit-transform: rotate(360deg); } 100% { -webkit-transform: rotate(0deg); } }
+        @keyframes spin-reverse { 0% { transform: rotate(360deg); } 100% { transform: rotate(0deg); } }
+
+        @-webkit-keyframes pulse { 0%, 100% { opacity: 1; -webkit-transform: scale(1); } 50% { opacity: 0.4; -webkit-transform: scale(0.85); } }
+        @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(0.85); } }
+
+        @media (max-width: 300px) {
+            body { padding: 8px; }
+            .card { padding: 14px 12px; border-radius: 10px; }
+            .loader-wrap { width: 48px; height: 48px; margin-bottom: 12px; }
+            .ring-inner { top: 8px; left: 8px; right: 8px; bottom: 8px; }
+            .core-dot { top: 18px; left: 18px; width: 12px; height: 12px; }
+            h2 { font-size: 16px; }
+            .subtitle { font-size: 12px; margin-bottom: 12px; min-height: 32px; }
+            .badge { margin-bottom: 12px; font-size: 10px; padding: 3px 8px; }
+            .btn { padding: 8px; font-size: 12px; }
+        }
     </style>
 </head>
 <body>
 
-    <div class="container" id="ui-container">
-        <div class="spinner" id="spinner"></div>
+    <div class="card state-checking" id="card">
+        <div class="badge" id="badge">
+            <span class="dot"></span><span id="badge-text">CONNECTING</span>
+        </div>
+
+        <div class="loader-wrap">
+            <div class="ring-outer"></div>
+            <div class="ring-inner"></div>
+            <div class="core-dot"></div>
+        </div>
+
         <h2 id="title">Checking Server</h2>
-        <p class="status-text" id="subtitle">Connecting to database...</p>
+        <p class="subtitle" id="subtitle">Verifying live tunnel status with database...</p>
+
+        <div class="progress-track">
+            <div class="progress-bar" id="progress-bar"></div>
+        </div>
+
+        <div class="meta-info" id="meta-info">Initializing check...</div>
+
+        <a href="#" class="btn btn-launch" id="launch-btn">Launch Server Now</a>
+        <button type="button" class="btn" id="retry-btn" onclick="manualCheck()">Check Now</button>
     </div>
 
     <script>
-        // Your specific Firebase URL targeting port 8787
-        const dbUrl = "https://cloudflaredurl-default-rtdb.asia-southeast1.firebasedatabase.app/tunnel_8787.json";
-        
-        async function checkStatus() {
-            try {
-                // cache: 'no-store' forces the browser to check Firebase directly every time
-                const response = await fetch(dbUrl, { cache: 'no-store' });
-                const data = await response.json();
-                
-                const title = document.getElementById("title");
-                const subtitle = document.getElementById("subtitle");
-                const spinner = document.getElementById("spinner");
+        var dbUrl = "https://cloudflaredurl-default-rtdb.asia-southeast1.firebasedatabase.app/tunnel_8787.json";
+        var pollInterval = 5; 
+        var countdown = pollInterval;
+        var timerId = null;
+        var attemptCount = 0;
+        var isChecking = false;
 
-                // Safeguard: If database is completely empty/deleted
-                if (!data) {
-                    title.innerText = "Service Unavailable";
-                    subtitle.innerText = "The server is offline. Please try again later.";
-                    spinner.style.display = "none";
-                    setTimeout(checkStatus, 5000); 
-                    return;
-                }
+        function setUIState(stateClass, badgeLabel, mainTitle, subText) {
+            var card = document.getElementById("card");
+            var badgeText = document.getElementById("badge-text");
+            var title = document.getElementById("title");
+            var subtitle = document.getElementById("subtitle");
 
-                if (data.status === "online" && data.url) {
-                    title.innerText = "Server Online";
-                    subtitle.innerText = "Redirecting you now...";
-                    spinner.style.borderTopColor = "#4CAF50"; 
-                    // Safely redirects to the full URL including any appended paths like /view
-                    window.location.replace(data.url); 
-                } 
-                else if (data.status === "waiting") {
-                    title.innerText = "Reconnecting...";
-                    subtitle.innerText = "The server is currently generating a new secure link. Please wait.";
-                    spinner.style.display = "block";
-                    spinner.style.borderTopColor = "#FFC107";
-                    setTimeout(checkStatus, 5000); // Check again in 5 seconds
-                } 
-                else {
-                    title.innerText = "Service Unavailable";
-                    subtitle.innerText = "The server is offline. Please try again later.";
-                    spinner.style.display = "none";
-                    setTimeout(checkStatus, 5000); // Check again in 5 seconds
+            card.className = "card " + stateClass;
+            badgeText.innerText = badgeLabel;
+            title.innerText = mainTitle;
+            subtitle.innerText = subText;
+        }
+
+        function startCountdown() {
+            clearInterval(timerId);
+            countdown = pollInterval;
+            updateProgressUI();
+
+            timerId = setInterval(function() {
+                countdown--;
+                if (countdown <= 0) {
+                    clearInterval(timerId);
+                    checkStatus();
+                } else {
+                    updateProgressUI();
                 }
-            } catch (error) {
-                console.error("Database fetch failed", error);
-                setTimeout(checkStatus, 5000); // Check again in 5 seconds on error
+            }, 1000);
+        }
+
+        function updateProgressUI() {
+            var bar = document.getElementById("progress-bar");
+            var meta = document.getElementById("meta-info");
+            var percent = (countdown / pollInterval) * 100;
+            bar.style.width = percent + "%";
+            meta.innerText = "Next auto-check in " + countdown + "s (Attempt #" + attemptCount + ")";
+        }
+
+        function manualCheck() {
+            if (!isChecking) {
+                clearInterval(timerId);
+                checkStatus();
             }
+        }
+
+        function checkStatus() {
+            isChecking = true;
+            attemptCount++;
+
+            var bar = document.getElementById("progress-bar");
+            var meta = document.getElementById("meta-info");
+            var retryBtn = document.getElementById("retry-btn");
+            var launchBtn = document.getElementById("launch-btn");
+
+            bar.style.width = "100%";
+            meta.innerText = "Requesting live status... (Attempt #" + attemptCount + ")";
+            retryBtn.innerText = "Checking...";
+
+            var xhr = new XMLHttpRequest();
+            var urlWithCacheBuster = dbUrl + "?t=" + new Date().getTime();
+
+            xhr.open("GET", urlWithCacheBuster, true);
+
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === 4) {
+                    isChecking = false;
+                    retryBtn.innerText = "Check Now";
+
+                    if (xhr.status === 200) {
+                        try {
+                            var data = JSON.parse(xhr.responseText);
+
+                            if (!data) {
+                                setUIState(
+                                    "state-offline",
+                                    "OFFLINE",
+                                    "Service Unavailable",
+                                    "No active tunnel found in database. Waiting for server to start..."
+                                );
+                                startCountdown();
+                                return;
+                            }
+
+                            if (data.status === "online" && data.url) {
+                                setUIState(
+                                    "state-online",
+                                    "ONLINE",
+                                    "Tunnel Active!",
+                                    "Secure link verified. Redirecting to your server..."
+                                );
+                                meta.innerText = "Target: " + data.url;
+                                launchBtn.href = data.url;
+                                launchBtn.style.display = "inline-block";
+                                retryBtn.style.display = "none";
+                                
+                                setTimeout(function() {
+                                    window.location.replace(data.url);
+                                }, 600);
+                            } 
+                            else if (data.status === "waiting") {
+                                setUIState(
+                                    "state-waiting",
+                                    "RECONNECTING",
+                                    "Generating New Link",
+                                    "Server is negotiating a fresh Cloudflare tunnel. Hang tight..."
+                                );
+                                startCountdown();
+                            } 
+                            else {
+                                setUIState(
+                                    "state-offline",
+                                    "OFFLINE",
+                                    "Server Stopped",
+                                    "The tunnel is currently shut down. Start cf-alive to connect."
+                                );
+                                startCountdown();
+                            }
+                        } catch (e) {
+                            setUIState(
+                                "state-offline",
+                                "DATA ERROR",
+                                "Invalid Response",
+                                "Received malformed data from Firebase. Retrying shortly..."
+                            );
+                            startCountdown();
+                        }
+                    } else {
+                        setUIState(
+                            "state-offline",
+                            "HTTP " + xhr.status,
+                            "Database Unreachable",
+                            "Could not read status from Firebase. Checking again shortly..."
+                        );
+                        startCountdown();
+                    }
+                }
+            };
+
+            xhr.onerror = function() {
+                isChecking = false;
+                retryBtn.innerText = "Check Now";
+                setUIState(
+                    "state-offline",
+                    "NETWORK ERR",
+                    "Connection Failed",
+                    "Check your internet connection. Unable to reach Firebase..."
+                );
+                startCountdown();
+            };
+
+            xhr.send();
         }
 
         // Start checking immediately when page loads
